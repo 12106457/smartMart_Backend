@@ -58,7 +58,7 @@ exports.addShop = async (req, res) => {
 
         res.status(201).send({
             status: true,
-            message: "New shop added successfully",
+            message: "Shop Register added successfully",
             data: newShop
         });
 
@@ -231,10 +231,12 @@ exports.updateShopProducts = async (req, res) => {
                 $set: {
                     price: price !== undefined ? price : undefined,
                     stock: stock !== undefined ? stock : undefined,
-                    available: available !== undefined ? available : undefined
+                    available: available !== undefined ? available : undefined,
+                    description: description !== undefined ? description : undefined,
+                    category: category !== undefined ? category : undefined
                 }
             },
-            { new: true } // Ensure the document returned is the updated one
+            // { new: true } // Ensure the document returned is the updated one
         ).populate("prodId"); // Populate product details from the Product collection
 
         if (!updatedShopProduct) {
@@ -244,37 +246,60 @@ exports.updateShopProducts = async (req, res) => {
             });
         }
 
-        // Now update the product details (name, category, image, etc.)
-        if (name || category || description || image) {
-            const updateProduct = {
-                name,
-                category,
-                description,
-                image
-            };
+        // if (name || image) {
+        //     const updateProduct = {
+        //         name,
+        //         image
+        //     };
 
-            // Remove undefined properties from the update object
-            Object.keys(updateProduct).forEach(
-                key => updateProduct[key] === undefined && delete updateProduct[key]
-            );
+        //     // Remove undefined properties from the update object
+        //     Object.keys(updateProduct).forEach(
+        //         key => updateProduct[key] === undefined && delete updateProduct[key]
+        //     );
 
-            // Update the product only if there are fields to update
-            if (Object.keys(updateProduct).length > 0) {
-                await Product.findByIdAndUpdate(prodId, updateProduct);
-            }
-        }
+        //     // Update the product only if there are fields to update
+        //     if (Object.keys(updateProduct).length > 0) {
+        //         await Product.findByIdAndUpdate(prodId, updateProduct);
+        //     }
+        // }
 
-        const updatedProduct = await ShopProduct.findOne({ shopId, prodId })
-        .populate("prodId");
+        // const updatedProduct = await ShopProduct.findOne({ shopId, prodId })
+        // .populate("prodId");
 
         res.status(200).send({
             status: true,
             message: "Shop product and associated product details updated successfully.",
-            data: updatedProduct
+            data: updatedShopProduct
         });
 
     } catch (error) {
         console.error("Error in updateShopProducts:", error);
+        res.status(500).send({ error: "Something went wrong." });
+    }
+};
+
+exports.productSearchResult = async (req, res) => {
+    try {
+        const { search } = req.query;
+
+        let query = {}; // Default query
+
+        if (search) {
+            query.name = { $regex: search, $options: "i" }; // Case-insensitive search
+        }
+
+        const result = search
+            ? await Product.find(query).limit(25) // Get all matching products
+            : await Product.find().limit(10); // Get first 10 products if no search
+
+        res.status(200).send({
+            status: true,
+            message: search ? "Search results fetched successfully." : "Initial product list (first 10).",
+            data: result
+        });
+
+    } catch (error) {
+        console.error("Error in productSearchResult:", error);
         res.status(500).send({ error: "Something went wrong." });
     }
 };

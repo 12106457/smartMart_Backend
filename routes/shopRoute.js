@@ -1,5 +1,5 @@
 const express = require("express");
-const {addProduct,addShop,getShopProducts,addShopProduct,updateShopProducts } = require("../controllers/shopProductController");
+const {addProduct,addShop,getShopProducts,addShopProduct,updateShopProducts,productSearchResult } = require("../controllers/shopProductController");
 const router = express.Router();
 const verifyToken=require("../middleware/verifyToken")
 
@@ -12,5 +12,7 @@ router.post("/shopProduct",addShopProduct);
 router.get("/getShopProducts/:shopId",getShopProducts);
 
 router.put("/updateProduct",updateShopProducts);
+
+router.get("/productSearch",productSearchResult );
 
 module.exports = router;

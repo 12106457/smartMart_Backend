@@ -26,7 +26,7 @@ exports.shopOwnerRegister=async(req, res) => {
 
         res.status(200).send({
             status:true,
-            message: "Your registration was successful!",
+            message: "Profile Creation was successful!",
             data: newShopOwner,
         });
     } catch (error) {
