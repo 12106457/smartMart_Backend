@@ -288,7 +288,7 @@ exports.productSearchResult = async (req, res) => {
             query.name = { $regex: search, $options: "i" }; // Case-insensitive search
         }
 
-        const result = search
+        const result = search!==""
             ? await Product.find(query).limit(25) // Get all matching products
             : await Product.find().limit(10); // Get first 10 products if no search
 
