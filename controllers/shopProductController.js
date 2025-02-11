@@ -207,37 +207,21 @@ exports.getShopProducts = async (req, res) => {
 
 exports.updateShopProducts = async (req, res) => {
     try {
-        const { shopId, prodId, price, stock, available, image, category, description, name } = req.body;
+        const { id, price, stock, available, image, category, description, name } = req.body;
 
-        // Validate input
-        if (!shopId || !prodId) {
-            return res.status(400).send({
-                status: false,
-                message: "ShopId and ProductId are required."
-            });
-        }
+        const updateFields = {};
+        if (name !== undefined) updateFields.name = name;
+        if (price !== undefined) updateFields.price = price;
+        if (stock !== undefined) updateFields.stock = stock;
+        if (available !== undefined) updateFields.available = available;
+        if (description !== undefined) updateFields.description = description;
+        if (category !== undefined) updateFields.category = category;
 
-        if (!mongoose.Types.ObjectId.isValid(shopId) || !mongoose.Types.ObjectId.isValid(prodId)) {
-            return res.status(400).send({
-                status: false,
-                message: "Invalid ShopId or ProductId."
-            });
-        }
-
-        // Perform a single query to check for existence and update the shop product
         const updatedShopProduct = await ShopProduct.findOneAndUpdate(
-            { shopId, prodId },
-            {
-                $set: {
-                    price: price !== undefined ? price : undefined,
-                    stock: stock !== undefined ? stock : undefined,
-                    available: available !== undefined ? available : undefined,
-                    description: description !== undefined ? description : undefined,
-                    category: category !== undefined ? category : undefined
-                }
-            },
-            // { new: true } // Ensure the document returned is the updated one
-        ).populate("prodId"); // Populate product details from the Product collection
+            { _id: id },
+            { $set: updateFields },
+            { new: true } // ✅ Ensures updated document is returned
+        ).populate("prodId");
 
         if (!updatedShopProduct) {
             return res.status(404).send({
@@ -245,26 +229,6 @@ exports.updateShopProducts = async (req, res) => {
                 message: "This product is not associated with the provided shop."
             });
         }
-
-        // if (name || image) {
-        //     const updateProduct = {
-        //         name,
-        //         image
-        //     };
-
-        //     // Remove undefined properties from the update object
-        //     Object.keys(updateProduct).forEach(
-        //         key => updateProduct[key] === undefined && delete updateProduct[key]
-        //     );
-
-        //     // Update the product only if there are fields to update
-        //     if (Object.keys(updateProduct).length > 0) {
-        //         await Product.findByIdAndUpdate(prodId, updateProduct);
-        //     }
-        // }
-
-        // const updatedProduct = await ShopProduct.findOne({ shopId, prodId })
-        // .populate("prodId");
 
         res.status(200).send({
             status: true,
@@ -284,17 +248,20 @@ exports.productSearchResult = async (req, res) => {
 
         let query = {}; // Default query
 
-        if (search) {
+        if (search && search.trim() !== "") {
             query.name = { $regex: search, $options: "i" }; // Case-insensitive search
         }
 
-        const result = search!==""
-            ? await Product.find(query).limit(25) // Get all matching products
-            : await Product.find().limit(10); // Get first 10 products if no search
+        // Fetch matching products if search exists, else return first 10 products
+        const result = Object.keys(query).length > 0
+            ? await Product.find(query).limit(20) // Fetch filtered products
+            : await Product.find().limit(14); // Fetch first 10 products if no search
 
         res.status(200).send({
             status: true,
-            message: search ? "Search results fetched successfully." : "Initial product list (first 10).",
+            message: search && search.trim() !== "" 
+                ? "Search results fetched successfully." 
+                : "Initial product list (first 10).",
             data: result
         });
 
@@ -303,3 +270,4 @@ exports.productSearchResult = async (req, res) => {
         res.status(500).send({ error: "Something went wrong." });
     }
 };
+

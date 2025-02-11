@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const ShopProductSchema = new mongoose.Schema({
   shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', required: true },
   prodId: { type: mongoose.Schema.Types.ObjectId, ref: 'ProductImage', required: true },
+  name:{type:String,required:true},
   category: { type: String, required: true },
   description: { type: String, required: true },
   price: { type: Number, required: true },
