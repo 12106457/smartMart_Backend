@@ -87,65 +87,51 @@ exports.shopOwnerLogin = async (req, res) => {
 exports.updatedProfileDetails = async (req, res) => {
     try {
         const { OwnerId } = req.params;
+        const { firstname, lastname,email } = req.body;
 
-        // Await the result of findOne to get the owner details
+        
         const ownerDetails = await shopOwnerProfileModel.findOne({ _id: OwnerId });
-        if (!ownerDetails) {
+        if (!ownerDetails || !ownerDetails.shopId) {
             return res.status(404).send({
                 status: false,
                 message: "No user found. Please register/login again!"
             });
         }
 
-        // Perform the update and await the result of findByIdAndUpdate
+        
         const updatedOwner = await shopOwnerProfileModel.findByIdAndUpdate(
-            { _id: OwnerId },
-            { $set: req.body },
-            { new: true } // To return the updated document
+            OwnerId, 
+            { $set: { firstname, lastname,email } },
+            { new: true } 
         );
 
-        // Send a response with the updated data
-        res.status(200).send({
+        let UpdatedShopProfile = null;
+        
+        if (updatedOwner.shopId) {
+            UpdatedShopProfile = await shopModel.findByIdAndUpdate(
+                updatedOwner.shopId,
+                { $set: req.body },
+                { new: true }
+            );
+        }
+
+       
+        return res.status(200).send({
             status: true,
             message: "Updated details successfully",
-            data: updatedOwner
+            data: {
+                profileData: updatedOwner,
+                shopDetails: UpdatedShopProfile || "No shop details found",
+            }
         });
 
     } catch (error) {
         console.error("Error in updatedProfileDetails:", error);
-        res.status(500).send({ status: false, message: "Something went wrong." });
-    }
-};
-
-exports.updatedShopDetails = async (req, res) => {
-    try {
-        const { shopId } = req.params;
-
-        // Await the result of findOne to get the shop details
-        const shopDetails = await shopModel.findOne({ shopId });
-        if (!shopDetails) {
-            return res.status(404).send({
-                status: false,
-                message: "No shop found. Please register/login again!"
-            });
-        }
-
-        // Perform the update and await the result of findByIdAndUpdate
-        const updatedShopDetails = await shopModel.findOneAndUpdate(
-            { shopId }, // Use shopId instead of _id
-            { $set: req.body },
-            { new: true } // To return the updated document
-        );
-
-        // Send a response with the updated data
-        res.status(200).send({
-            status: true,
-            message: "Updated details successfully",
-            data: updatedShopDetails
+        return res.status(500).send({
+            status: false,
+            message: "Something went wrong.",
+            error: error.message
         });
-
-    } catch (error) {
-        console.error("Error in updatedShopDetails:", error);
-        res.status(500).send({ status: false, message: "Something went wrong." });
     }
 };
+

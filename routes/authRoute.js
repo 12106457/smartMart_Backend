@@ -6,9 +6,9 @@ router.post("/register", shopOwnerRegister);
 
 router.post("/login",shopOwnerLogin );
 
-router.put('/update/user/profile',updatedProfileDetails);
+router.put('/update/profile/:OwnerId',updatedProfileDetails);
 
-router.put('/update/shop/profile',updatedShopDetails);
+
 
 
 module.exports = router;
