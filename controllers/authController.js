@@ -72,6 +72,7 @@ exports.shopOwnerLogin = async (req, res) => {
                 id: shopOwner._id,
                 firstname: shopOwner.firstname,
                 lastname: shopOwner.lastname,
+                email:shopOwner.email,
                 phone: shopOwner.phone,
                 shopDetails: shopOwner.shopId,
             }
