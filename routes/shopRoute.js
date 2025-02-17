@@ -15,7 +15,7 @@ router.put("/updateProduct",updateShopProducts);
 
 router.get("/productSearch",productSearchResult );
 
-router.get("/orders/:shopId",getOrderDetails);
+// router.get("/orders/:shopId",getOrderDetails);
 
 router.get("/dashboard/:shopId",getDashboardData);
 
