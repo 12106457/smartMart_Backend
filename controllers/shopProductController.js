@@ -4,7 +4,8 @@ const Product = require('../models/productModel');
 const Shop = require('../models/shopModel');
 const shopOwnerModel=require('../models/shopOwnerProfileModel.js')
 const generateUniqueShopId =require('../utility/shopIdGenerator.js');
-const orderModel= require("../models/orders.js")
+const OrderItemModel= require("../models/orders/orderItem.js")
+const OrderModel= require("../models/orders/order.js")
 const moment = require("moment");
 
 // Add a New Shop
@@ -274,113 +275,163 @@ exports.productSearchResult = async (req, res) => {
 
 
 //sending all orders to particulat user
-exports.getOrderDetails = async (req, res) => {
-    const { shopId } = req.params;
+// exports.getOrderDetails = async (req, res) => {
+//     const { shopId } = req.params;
 
-    // Validate input
-    if (!shopId) {
-        return res.status(400).send({
-            status: false,
-            message: "ShopId is required."
-        });
-    }
+//     // Validate input
+//     if (!shopId) {
+//         return res.status(400).send({
+//             status: false,
+//             message: "ShopId is required."
+//         });
+//     }
 
-    // Check if shop exists
-    const shopExists = await Shop.findById(shopId);
-    if (!shopExists) {
-        return res.status(404).send({
-            status: false,
-            message: "Shop not found. Please provide a valid ShopId."
-        });
-    }
+//     // Check if shop exists
+//     const shopExists = await Shop.findById(shopId);
+//     if (!shopExists) {
+//         return res.status(404).send({
+//             status: false,
+//             message: "Shop not found. Please provide a valid ShopId."
+//         });
+//     }
 
-    // Fetch order data
-    const orderData = await orderModel.find({ sellerId: shopId }).populate("Customer").populate("ShopProduct");
+//     // Fetch order data
+//     const orderData = await orderModel.find({ sellerId: shopId }).populate("Customer").populate("ShopProduct");
 
-    if (orderData.length === 0) {
-        return res.status(200).send({
-            status: true,
-            message: "No orders found for this Seller.",
-        });
-    }
+//     if (orderData.length === 0) {
+//         return res.status(200).send({
+//             status: true,
+//             message: "No orders found for this Seller.",
+//         });
+//     }
 
-    res.status(200).send({
-        status: true,
-        message: "Orders fetched successfully",
-        data: orderData
-    });
-};
+//     res.status(200).send({
+//         status: true,
+//         message: "Orders fetched successfully",
+//         data: orderData
+//     });
+// };
 
 
 //sending dashboard details 
+
 exports.getDashboardData = async (req, res) => {
     try {
         const { shopId } = req.params;
 
-        // Validate input
+        // ✅ Validate input
         if (!shopId) {
             return res.status(400).json({
                 status: false,
-                message: "ShopId is required."
+                message: "ShopId is required.",
             });
         }
 
-        // Check if shop exists
+        // ✅ Check if the shop exists
         const shopExists = await Shop.findById(shopId);
         if (!shopExists) {
             return res.status(404).json({
                 status: false,
-                message: "Shop not found. Please provide a valid ShopId."
+                message: "Shop not found. Please provide a valid ShopId.",
             });
         }
 
-        // Fetch orders for the shop
-        const orders = await orderModel.find({ sellerId: shopId })
-            .populate("Customer")
-            .populate("ShopProduct");
-
-        // Count total products for the shop
+        // ✅ Count total products for the shop
         const productCount = await ShopProduct.countDocuments({ shopId });
 
-        // Get today's date, yesterday's date, and the start of the current month
-        const today = moment().startOf("day");
-        const yesterday = moment().subtract(1, "day").startOf("day");
-        const startOfMonth = moment().startOf("month");
+        // ✅ Get today's date, yesterday's date, and the start of the current month
+        const today = moment().format("YYYY-MM-DD");
+        const yesterday = moment().subtract(1, "day").format("YYYY-MM-DD");
+        const startOfMonth = moment().startOf("month").toDate();
 
-        // Initialize variables
-        let todayCollection = 0;
-        let yesterdayCollection = 0;
-        let totalMonthlyAmount = 0;
-        let todayOrderCount = 0;
-
-        orders.forEach(order => {
-            const orderDate = moment(order.createdAt);
-            const orderAmount = order.totalAmount || 0; // Assuming totalAmount is the field storing order value
-
-            if (orderDate.isSame(today, "day")) {
-                todayCollection += orderAmount;
-                todayOrderCount++;
-            }
-
-            if (orderDate.isSame(yesterday, "day")) {
-                yesterdayCollection += orderAmount;
-            }
-
-            if (orderDate.isSameOrAfter(startOfMonth, "day")) {
-                totalMonthlyAmount += orderAmount;
-            }
+        // ✅ Count unique orders for this month
+        const totalMonthlyOrders = await OrderModel.countDocuments({
+            sellerId: shopId,
+            orderDate: { $gte: startOfMonth } // Orders from the start of the month
         });
 
-        // Respond with dashboard data
+        // ✅ Aggregate order items to calculate sales amounts
+        const orderItems = await OrderItemModel.aggregate([
+            {
+                $lookup: {
+                    from: "orders", // ✅ Ensure the correct collection name
+                    localField: "orderId",
+                    foreignField: "_id",
+                    as: "order"
+                }
+            },
+            { $unwind: "$order" }, // Convert order array into objects
+            {
+                $match: { "order.sellerId": new mongoose.Types.ObjectId(shopId) }
+            },
+            {
+                $group: {
+                    _id: null,
+                    todayCollection: {
+                        $sum: {
+                            $cond: [
+                                { 
+                                    $eq: [{ $dateToString: { format: "%Y-%m-%d", date: "$order.orderDate" } }, today] 
+                                },
+                                "$totalAmount",
+                                0
+                            ]
+                        }
+                    },
+                    yesterdayCollection: {
+                        $sum: {
+                            $cond: [
+                                { 
+                                    $eq: [{ $dateToString: { format: "%Y-%m-%d", date: "$order.orderDate" } }, yesterday] 
+                                },
+                                "$totalAmount",
+                                0
+                            ]
+                        }
+                    },
+                    totalMonthlyAmount: {
+                        $sum: {
+                            $cond: [
+                                { $gte: ["$order.orderDate", startOfMonth] },
+                                "$totalAmount",
+                                0
+                            ]
+                        }
+                    },
+                    todayOrderCount: {
+                        $sum: {
+                            $cond: [
+                                { 
+                                    $eq: [{ $dateToString: { format: "%Y-%m-%d", date: "$order.orderDate" } }, today] 
+                                },
+                                1,
+                                0
+                            ]
+                        }
+                    }
+                }
+            }
+        ]);
+
+        // ✅ Extract values safely from aggregation result
+        const data = orderItems.length > 0 ? orderItems[0] : {
+            todayCollection: 0,
+            yesterdayCollection: 0,
+            totalMonthlyAmount: 0,
+            todayOrderCount: 0
+        };
+
+        // ✅ Respond with dashboard data
         res.status(200).json({
             status: true,
-            message: "Fetch data success",
+            message: "Dashboard data fetched successfully",
             data: {
-                todayCollection,
-                yesterdayCollection,
+                todayCollection: data.todayCollection,
+                yesterdayCollection: data.yesterdayCollection,
                 productCount,
-                todayOrderCount,
-                totalMonthlyAmount
+                todayOrderCount: data.todayOrderCount,
+                totalMonthlyOrders, // ✅ Monthly unique orders from OrderModel
+                totalMonthlyAmount: data.totalMonthlyAmount
             }
         });
 

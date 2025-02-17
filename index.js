@@ -4,6 +4,7 @@ const connectDB = require("./config/db");
 const shopRoutes = require("./routes/shopRoute");
 const masterRoute=require("./routes/masterDataRoute")
 const authRoute=require("./routes/authRoute")
+const orderRoute=require("./routes/orderRoute")
 const cors = require("cors");
 dotenv.config();
 connectDB();
@@ -21,6 +22,7 @@ app.use(
 app.use("/shop", shopRoutes);
 app.use("/master", masterRoute);
 app.use("/auth", authRoute);
+app.use("/order",orderRoute);
 app.get("/", (req, res) => {
     res.send("Welcome to the India's Fastest App Backend Server...");
   });
