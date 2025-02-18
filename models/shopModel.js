@@ -13,4 +13,8 @@ const ShopSchema = new mongoose.Schema({
     status:{type:Boolean,default:true},
     createdAt: { type: Date, default: Date.now }
 });
+ShopSchema.index({name:1});
+ShopSchema.index({location:1});
+ShopSchema.index({shopId:1});
+ShopSchema.index({name:1});
 module.exports = mongoose.model("Shop", ShopSchema);

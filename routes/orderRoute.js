@@ -9,8 +9,8 @@ const {
 const router = express.Router();
 
 router.post("/create", createOrder);
-router.get("/", getOrders);
-router.put("/status", updateOrderStatus);
-router.post("/payment", processPayment); 
+router.get("/:sellerId", getOrders);
+// router.put("/status", updateOrderStatus);
+// router.post("/payment", processPayment); 
 
 module.exports = router;

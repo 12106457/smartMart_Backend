@@ -1,66 +1,95 @@
 const mongoose = require("mongoose");
-const Order = require("../models/orders/order");
-const OrderItem = require("../models/orders/orderItem");
-const Transaction = require("../models/orders/transactions");
-const OrderStatusHistory = require("../models/orders/orderStatusHistory");
-const axios = require("axios"); // Import axios for API call
-
-// ✅ CREATE ORDER WITH TRANSACTION LOGGING
+const axios = require("axios");
+const SellerOrder = require("../models/seller_order_models/order");
+const CustomerOrder = require("../models/customer/CustomerOrderModel");
+const OrderItem = require("../models/seller_order_models/orderItem");
+const Transaction = require("../models/seller_order_models/transactions");
+const OrderStatusHistory = require("../models/seller_order_models/orderStatusHistory");
+const generateOrderId = require("../utility/orderIdGenerator");
 
 exports.createOrder = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction(); // Begin Transaction
 
   try {
-    const { sellerId, customerId, products, totalOrderAmount, paymentMethod, shippingAddress } = req.body;
+    const { sellerId, customerId, products, totalOrderAmount, paymentMethod,paymentStatus, shippingAddress,additionalNotes } = req.body;
 
-    // ✅ Step 1: Create Order
-    const order = new Order({ sellerId, customerId, totalOrderAmount, paymentMethod, shippingAddress });
-    await order.save({ session });
+    const OrderId=await generateOrderId();
 
-    // ✅ Step 2: Add Order Items
+    // ✅ Step 1: Create Order Items
     const orderItems = products.map((product) => ({
-      orderId: order._id,
       productId: product.productId,
       quantity: product.quantity,
       totalAmount: product.totalAmount,
     }));
 
-    await OrderItem.insertMany(orderItems, { session });
+    const savedOrderItems = await OrderItem.insertMany(orderItems, { session });
 
-    // ✅ Step 3: Create Order Status History (Initial Status)
-    await OrderStatusHistory.create([{ orderId: order._id, status: "Pending" }], { session });
+    // ✅ Step 2: Create Seller Order
+    const sellerOrder = new SellerOrder({
+      orderNo:OrderId,
+      sellerId,
+      customerId,
+      items: savedOrderItems.map((item) => item._id),
+      totalOrderAmount,
+      paymentMethod,
+      shippingAddress,
+      status: "Pending",
+      paymentStatus: paymentMethod === "cash_on_delivery" ? "Pending" : paymentStatus,
+      deliveryStatus: "Pending",
+      additionalNotes
+    });
 
-    // ✅ Step 4: Create Transaction (If Payment Method is Not COD)
+    await sellerOrder.save({ session });
+
+    // ✅ Step 3: Create Customer Order
+    const customerOrder = new CustomerOrder({
+      orderNo:OrderId,
+      customerId,
+      shopId: sellerId,
+      items: savedOrderItems.map((item) => item._id),
+      totalOrderAmount,
+      paymentMethod,
+      shippingAddress,
+      status: "Pending",
+      paymentStatus: paymentMethod === "cash_on_delivery" ? "Pending" : paymentStatus,
+    });
+
+    await customerOrder.save({ session });
+
+    // ✅ Step 4: Create Order Status History (Initial Status)
+    await OrderStatusHistory.create([{ orderId: OrderId, status: "Pending" }], { session });
+
+    // ✅ Step 5: Create Transaction (If Payment Method is Not COD)
+    let transaction = null;
     if (paymentMethod !== "cash_on_delivery") {
-      await Transaction.create(
-        [
-          {
-            orderId: order._id,
-            userId: customerId,
-            paymentMethod,
-            status: "Pending",
-            amount: totalOrderAmount,
-            transactionId: `TXN-${Date.now()}`, // Mock Transaction ID
-          },
-        ],
-        { session }
-      );
+      transaction = new Transaction({
+        orderNo:OrderId,
+        shopId:sellerId,
+        userId: customerId,
+        paymentMethod,
+        status: paymentStatus,
+        amount: totalOrderAmount,
+        transactionId: `TXN-${Date.now()}`, // Mock Transaction ID
+      });
+      await transaction.save({ session });
     }
 
     await session.commitTransaction(); // Commit Transaction
     session.endSession();
 
-    // ✅ Step 5: Notify WebSocket Microservice (Send Order to Seller's Page)
+    // ✅ Step 6: Notify WebSocket Microservice (Send Order to Seller's Page)
     try {
-      await axios.post("https://smart-mart-websocket.onrender.com/place-order", {
-        orderId: order._id, // Send order ID to WebSocket microservice
+      await axios.post(
+        "https://smart-mart-websocket.onrender.com/place-order"
+        , {
+        orderId: OrderId,
       });
     } catch (wsError) {
       console.error("WebSocket Microservice Error:", wsError.message);
     }
 
-    res.status(201).json({ success: true, message: "Order created", order });
+    res.status(201).json({ success: true, message: "Order created", orderId: sellerOrder._id });
   } catch (error) {
     await session.abortTransaction(); // Rollback in case of error
     session.endSession();
@@ -68,20 +97,36 @@ exports.createOrder = async (req, res) => {
   }
 };
 
+
 // ✅ GET ALL ORDERS (With Order History & Transactions)
 exports.getOrders = async (req, res) => {
   try {
-    const orders = await Order.find()
-      .populate("sellerId customerId")
-      .lean(); // Convert Mongoose docs to plain objects
+    const { sellerId } = req.params; 
+    
+    const orders = await SellerOrder.find({ sellerId })
+      .select("-__v -createdAt -updatedAt")
+      .populate("customerId","_id name email phone image address location") 
+      .populate({
+        path: "items", 
+        populate: {
+          path: "productId",
+          select:"_id name category description price", 
+          populate: {
+            path: "prodId", 
+            select:"image"
+          },
+        },
+        select:"_id quantity totalAmount"
+      })
+      .lean();
 
-    for (const order of orders) {
-      order.items = await OrderItem.find({ orderId: order._id }).populate("productId").lean();
-      order.transactions = await Transaction.find({ orderId: order._id }).lean();
-      order.statusHistory = await OrderStatusHistory.find({ orderId: order._id }).lean();
-    }
-
-    res.json(orders);
+    
+    // Respond with the populated orders
+    res.status(200).send({
+      status:true,
+      message:"fetch the seller orders",
+      data: orders
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
