@@ -4,6 +4,7 @@ const shopOwnerProfileModel=require("../models/shopOwnerProfileModel");
 const shopModel=require("../models/shopModel");
 const bcryptjs = require("bcryptjs");
 const jsonwebtoken = require("jsonwebtoken");
+const Customer = require("../models/customer/CustomerModel"); 
 
 //shopOwner register
 exports.shopOwnerRegister=async(req, res) => {
@@ -136,3 +137,52 @@ exports.updatedProfileDetails = async (req, res) => {
     }
 };
 
+
+
+
+
+
+// ----------------------------------------------------------
+exports.createCustomer = async (req, res) => {
+    try {
+      const {
+        name,
+        email,
+        phone,
+        password,
+        image,
+        address,
+        walletBalance,
+        cart,
+        orders,
+        referralCode,
+        isActive,
+        location // Accept location from the request body
+      } = req.body;
+  
+      // Ensure location is either omitted or set as an empty object if not provided
+      const customerData = {
+        name,
+        email,
+        phone,
+        password,
+        image,
+        address,
+        walletBalance: walletBalance || 0, // Default to 0 if not provided
+        cart: cart || [],
+        orders: orders || [],
+        referralCode: referralCode || null,
+        isActive: isActive !== undefined ? isActive : true, // Default to true if not provided
+        location: location || {} // If location is not provided, set it to an empty object
+      };
+  
+      const newCustomer = new Customer(customerData);
+  
+      const savedCustomer = await newCustomer.save();
+  
+      res.status(201).json({ message: 'Customer created successfully', data: savedCustomer });
+    } catch (error) {
+      console.error('Error creating customer:', error);
+      res.status(500).json({ message: 'Server error', error: error.message });
+    }
+  };

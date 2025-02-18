@@ -4,9 +4,9 @@ const Product = require('../models/productModel');
 const Shop = require('../models/shopModel');
 const shopOwnerModel=require('../models/shopOwnerProfileModel.js')
 const generateUniqueShopId =require('../utility/shopIdGenerator.js');
-const OrderItemModel= require("../models/orders/orderItem.js")
-const OrderModel= require("../models/orders/order.js")
 const moment = require("moment");
+const SellerOrder=require("../models/seller_order_models/order.js");
+const OrderItem=require("../models/seller_order_models/orderItem.js");
 
 // Add a New Shop
 exports.addShop = async (req, res) => {
@@ -344,25 +344,25 @@ exports.getDashboardData = async (req, res) => {
         const yesterday = moment().subtract(1, "day").format("YYYY-MM-DD");
         const startOfMonth = moment().startOf("month").toDate();
 
-        // ✅ Count unique orders for this month
-        const totalMonthlyOrders = await OrderModel.countDocuments({
+        // ✅ Count unique orders for this month in SellerOrder model
+        const totalMonthlyOrders = await SellerOrder.countDocuments({
             sellerId: shopId,
-            orderDate: { $gte: startOfMonth } // Orders from the start of the month
+            orderDate: { $gte: startOfMonth }, // Orders from the start of the month
         });
 
-        // ✅ Aggregate order items to calculate sales amounts
-        const orderItems = await OrderItemModel.aggregate([
+        // ✅ Aggregate order items to calculate sales amounts (for today, yesterday, and total monthly)
+        const orderItems = await OrderItem.aggregate([
             {
                 $lookup: {
-                    from: "orders", // ✅ Ensure the correct collection name
+                    from: "seller_orders", // Referencing SellerOrder model (ensure the correct collection name)
                     localField: "orderId",
                     foreignField: "_id",
-                    as: "order"
-                }
+                    as: "order",
+                },
             },
-            { $unwind: "$order" }, // Convert order array into objects
+            { $unwind: "$order" }, // Unwind order array into an object
             {
-                $match: { "order.sellerId": new mongoose.Types.ObjectId(shopId) }
+                $match: { "order.sellerId": new mongoose.Types.ObjectId(shopId) },
             },
             {
                 $group: {
@@ -370,47 +370,56 @@ exports.getDashboardData = async (req, res) => {
                     todayCollection: {
                         $sum: {
                             $cond: [
-                                { 
-                                    $eq: [{ $dateToString: { format: "%Y-%m-%d", date: "$order.orderDate" } }, today] 
+                                {
+                                    $eq: [
+                                        { $dateToString: { format: "%Y-%m-%d", date: "$order.orderDate" } },
+                                        today,
+                                    ],
                                 },
                                 "$totalAmount",
-                                0
-                            ]
-                        }
+                                0,
+                            ],
+                        },
                     },
                     yesterdayCollection: {
                         $sum: {
                             $cond: [
-                                { 
-                                    $eq: [{ $dateToString: { format: "%Y-%m-%d", date: "$order.orderDate" } }, yesterday] 
+                                {
+                                    $eq: [
+                                        { $dateToString: { format: "%Y-%m-%d", date: "$order.orderDate" } },
+                                        yesterday,
+                                    ],
                                 },
                                 "$totalAmount",
-                                0
-                            ]
-                        }
+                                0,
+                            ],
+                        },
                     },
                     totalMonthlyAmount: {
                         $sum: {
                             $cond: [
                                 { $gte: ["$order.orderDate", startOfMonth] },
                                 "$totalAmount",
-                                0
-                            ]
-                        }
+                                0,
+                            ],
+                        },
                     },
                     todayOrderCount: {
                         $sum: {
                             $cond: [
-                                { 
-                                    $eq: [{ $dateToString: { format: "%Y-%m-%d", date: "$order.orderDate" } }, today] 
+                                {
+                                    $eq: [
+                                        { $dateToString: { format: "%Y-%m-%d", date: "$order.orderDate" } },
+                                        today,
+                                    ],
                                 },
                                 1,
-                                0
-                            ]
-                        }
-                    }
-                }
-            }
+                                0,
+                            ],
+                        },
+                    },
+                },
+            },
         ]);
 
         // ✅ Extract values safely from aggregation result
@@ -418,7 +427,7 @@ exports.getDashboardData = async (req, res) => {
             todayCollection: 0,
             yesterdayCollection: 0,
             totalMonthlyAmount: 0,
-            todayOrderCount: 0
+            todayOrderCount: 0,
         };
 
         // ✅ Respond with dashboard data
@@ -430,9 +439,9 @@ exports.getDashboardData = async (req, res) => {
                 yesterdayCollection: data.yesterdayCollection,
                 productCount,
                 todayOrderCount: data.todayOrderCount,
-                totalMonthlyOrders, // ✅ Monthly unique orders from OrderModel
-                totalMonthlyAmount: data.totalMonthlyAmount
-            }
+                totalMonthlyOrders, // Monthly unique orders from SellerOrder model
+                totalMonthlyAmount: data.totalMonthlyAmount,
+            },
         });
 
     } catch (error) {
@@ -440,7 +449,7 @@ exports.getDashboardData = async (req, res) => {
         res.status(500).json({
             status: false,
             message: "Internal server error",
-            error: error.message
+            error: error.message,
         });
     }
 };
