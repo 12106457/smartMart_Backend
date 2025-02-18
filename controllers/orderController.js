@@ -88,6 +88,7 @@ exports.createOrder = async (req, res) => {
     } catch (wsError) {
       console.error("WebSocket Microservice Error:", wsError.message);
     }
+    console.log("Order placed successfully...")
 
     res.status(201).json({ success: true, message: "Order created", orderId: sellerOrder._id });
   } catch (error) {
