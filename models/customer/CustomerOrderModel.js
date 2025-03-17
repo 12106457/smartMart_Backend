@@ -10,6 +10,7 @@ const customerOrderSchema = new mongoose.Schema({
   paymentStatus: { type: String, enum: ["Pending", "Paid", "Failed", "Refund"], default: "Pending" },
   paymentMethod: { type: String, enum: ["credit_card", "debit_card", "paypal", "cash_on_delivery", "UPI"], required: true },
   estimatedDelivery: { type: Date, default: Date.now },
+  orderType:{type:String, enum:["Cash_On_Delivery","Take_A_Way"],default:"Cash_On_Delivery"},
   shippingAddress: {
     street: { type: String },
     city: { type: String },

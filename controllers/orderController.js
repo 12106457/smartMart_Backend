@@ -12,7 +12,7 @@ exports.createOrder = async (req, res) => {
   session.startTransaction(); // Begin Transaction
 
   try {
-    const { sellerId, customerId, products, totalOrderAmount, paymentMethod,paymentStatus, shippingAddress,additionalNotes } = req.body;
+    const { sellerId, customerId, products, totalOrderAmount, paymentMethod,paymentStatus, shippingAddress,additionalNotes,orderType } = req.body;
 
     const OrderId=await generateOrderId();
 
@@ -35,6 +35,7 @@ exports.createOrder = async (req, res) => {
       paymentMethod,
       shippingAddress,
       status: "Pending",
+      orderType,
       paymentStatus: paymentMethod === "cash_on_delivery" ? "Pending" : paymentStatus,
       deliveryStatus: "Pending",
       additionalNotes
@@ -51,6 +52,7 @@ exports.createOrder = async (req, res) => {
       totalOrderAmount,
       paymentMethod,
       shippingAddress,
+      orderType,
       status: "Pending",
       paymentStatus: paymentMethod === "cash_on_delivery" ? "Pending" : paymentStatus,
     });
@@ -82,6 +84,7 @@ exports.createOrder = async (req, res) => {
     try {
       await axios.post(
         "https://smart-mart-websocket.onrender.com/place-order"
+        // "http://localhost:8080/place-order"
         , {
         orderId: OrderId,
       });
@@ -119,7 +122,8 @@ exports.getOrders = async (req, res) => {
         },
         select:"_id quantity totalAmount"
       })
-      .lean();
+      .lean()
+      .sort({ orderDate: -1 });
 
     
     // Respond with the populated orders

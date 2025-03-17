@@ -5,7 +5,9 @@ const shopRoutes = require("./routes/shopRoute");
 const masterRoute=require("./routes/masterDataRoute")
 const authRoute=require("./routes/authRoute")
 const orderRoute=require("./routes/orderRoute")
+const notificationRoute=require("./routes/notificationRoute")
 const cors = require("cors");
+const axios = require("axios");
 dotenv.config();
 connectDB();
 
@@ -23,8 +25,28 @@ app.use("/shop", shopRoutes);
 app.use("/master", masterRoute);
 app.use("/auth", authRoute);
 app.use("/order",orderRoute);
+app.use("/notifications",notificationRoute);
 app.get("/", (req, res) => {
     res.send("Welcome to the India's Fastest App Backend Server...");
   });
+
+
+// Function to send a request every 5 minutes (300000 ms)
+function keepServerAlive() {
+    axios.get(process.env.WEBSOCKET_URL)
+        .then(response => {
+            console.log(`✅ Server pinged at ${new Date().toLocaleTimeString()}`);
+        })
+        .catch(error => {
+            console.error("❌ Error pinging the server:", error.message);
+        });
+}
+
+// Call function immediately
+keepServerAlive();
+
+// Schedule repeated calls every 5 minutes
+setInterval(keepServerAlive, 300000);
+
 const PORT =5000
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

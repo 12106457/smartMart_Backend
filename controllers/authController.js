@@ -137,6 +137,58 @@ exports.updatedProfileDetails = async (req, res) => {
     }
 };
 
+exports.changeExistingPassword = async (req, res) => {
+    try {
+        const { id, previousPassword, newPassword } = req.body;
+
+        // Check if user exists
+        const userProfileData = await shopOwnerProfileModel.findById(id);
+        if (!userProfileData) {
+            return res.status(404).send({
+                status: false,
+                message: "User not found"
+            });
+        }
+
+        // Verify previous password
+        const isPasswordValid = await bcryptjs.compare(previousPassword, userProfileData.password);
+        if (!isPasswordValid) {
+            return res.status(400).send({
+                status: false,
+                message: "Incorrect previous password"
+            });
+        }
+
+        // Hash new password
+        const salt = await bcryptjs.genSalt(10);
+        const hashedPassword = await bcryptjs.hash(newPassword, salt);
+
+        // Update password
+        const updatedProfileDetails = await shopOwnerProfileModel.findByIdAndUpdate(
+            id,
+            { password: hashedPassword },
+            { new: true }
+        );
+
+        if (updatedProfileDetails) {
+            return res.status(200).send({
+                status: true,
+                message: "Password updated successfully"
+            });
+        } else {
+            return res.status(500).send({
+                status: false,
+                message: "Failed to update password"
+            });
+        }
+    } catch (error) {
+        console.error("Error updating password:", error);
+        res.status(500).send({
+            status: false,
+            message: "Internal server error"
+        });
+    }
+};
 
 
 
