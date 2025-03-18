@@ -93,7 +93,7 @@ exports.createOrder = async (req, res) => {
     }
     console.log("Order placed successfully...")
 
-    res.status(201).json({ success: true, message: "Order created", orderId: sellerOrder._id });
+    res.status(201).json({ success: true, message: "Order created", orderId: OrderId });
   } catch (error) {
     await session.abortTransaction(); // Rollback in case of error
     session.endSession();

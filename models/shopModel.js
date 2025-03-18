@@ -9,7 +9,7 @@ const ShopSchema = new mongoose.Schema({
     shopCategory:[{ type: mongoose.Schema.Types.ObjectId, ref: "shopCategorys",required:true }],
     shopImage:{type:String},
     openingHours:{type:String,required:true},
-    rating: { type: Number, default: 0 },
+    rating: { type: Number, default: 5 },
     status:{type:Boolean,default:true},
     createdAt: { type: Date, default: Date.now }
 });
