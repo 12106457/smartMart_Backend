@@ -7,6 +7,8 @@ const authRoute=require("./routes/authRoute")
 const orderRoute=require("./routes/orderRoute")
 const notificationRoute=require("./routes/notificationRoute")
 const faqController=require("./routes/faqRoute");
+const customerRoute=require("./routes/customerRoute");
+const mailRoute=require("./routes/mailRoute");
 const cors = require("cors");
 const axios = require("axios");
 dotenv.config();
@@ -28,6 +30,8 @@ app.use("/auth", authRoute);
 app.use("/order",orderRoute);
 app.use("/notifications",notificationRoute);
 app.use("/faq",faqController);
+app.use("/customer",customerRoute);
+app.use("/mail",mailRoute);
 app.get("/", (req, res) => {
     res.send("Welcome to the India's Fastest App Backend Server...");
   });
