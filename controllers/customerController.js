@@ -2,6 +2,7 @@ const Customer = require("../models/customer/CustomerModel");
 const jsonwebtoken = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const axios = require("axios");
+const TokenGenerator=require("../utility/jsonWebTokenGenerater");
 require("dotenv").config();
 const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -67,7 +68,8 @@ exports.customerLogin = async (req, res) => {
         try {
             // 🔹 Send only the email in the request body
             const response = await axios.post(mailApiUrl, { email: existingCustomer.email });
-            mailResponse = response.data;  // Expected { status: true/false, message: "some message" }
+            mailResponse = response.data;
+            mailResponse = {status:response.data.status,message:response.data.message,data:existingCustomer}
         } catch (mailError) {
             console.error("Error sending email:", mailError.response?.data || mailError.message);
             mailResponse = { status: false, message: "Failed to send email" };
@@ -80,4 +82,49 @@ exports.customerLogin = async (req, res) => {
         console.error("Error in customerLogin:", error);
         return res.status(500).send({ status: false, message: "Server error" });
     }
+};
+
+exports.verifyLoginOtp = async (req, res) => {
+  try {
+    const { otp, email } = req.body;
+
+    // Check if customer exists
+    const existingCustomer = await Customer.findOne({ email });
+    if (!existingCustomer) {
+      return res.status(404).send({ status: false, message: "Please register first" });
+    }
+
+    // Verify OTP
+    const mailApiUrl = `${req.protocol}://${req.get("host")}/mail/verifyotp`;
+    let mailResponse;
+    try {
+      const response = await axios.post(mailApiUrl, { email, otp }); // Send OTP for verification
+      mailResponse = response.data;
+    } catch (mailError) {
+      console.error("Error verifying OTP:", mailError.response?.data || mailError.message);
+      return res.status(500).send({ status: false, message: "Failed to verify OTP" });
+    }
+
+    if (!mailResponse.status) {
+      return res.status(400).send({ status: false, message: mailResponse.message });
+    }
+
+    // Generate Token if OTP is verified
+    let token;
+    try {
+      token = await TokenGenerator(existingCustomer.phone);
+    } catch (error) {
+      return res.status(500).send({ status: false, message: "Token generation failed" });
+    }
+
+    return res.status(200).send({
+      status: true,
+      message: "Login successful",
+      data: existingCustomer,
+      token: token,
+    });
+  } catch (error) {
+    console.error("Error in verifyLoginOtp:", error);
+    return res.status(500).send({ status: false, message: "Something went wrong" });
+  }
 };
