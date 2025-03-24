@@ -10,7 +10,7 @@ const transporter = nodemailer.createTransport({
       pass: process.env.EMAIL_PASS, 
     },
   });
-  
+
 const otpGeneratorList = {};
 const expiryTime = 10 * 60 * 1000; // 10 minutes in milliseconds
 
@@ -71,7 +71,7 @@ exports.sendMail = async (req, res) => {
     transporter.sendMail(mailOptions, (err, result) => {
       if (err) {
         console.log("Something went wrong while sending the mail...");
-        return res.status(500).send({ error: "Email sending failed" });
+        return res.status(500).send({ status:false,message: "Email sending failed" });
       } else {
         console.log("Email sent successfully...");
         res.status(200).send({ status: true, message: "OTP sent successfully" });
