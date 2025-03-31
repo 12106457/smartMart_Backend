@@ -70,7 +70,7 @@ exports.sendMail = async (req, res) => {
 
     transporter.sendMail(mailOptions, (err, result) => {
       if (err) {
-        console.log("Something went wrong while sending the mail...");
+        console.log("Something went wrong while sending the mail...",err);
         return res.status(500).send({ status:false,message: "Email sending failed" });
       } else {
         console.log("Email sent successfully...");
@@ -110,4 +110,59 @@ exports.verifyOtp = async (req, res) => {
     }
 };
 
+exports.resendOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
 
+    if (!email) {
+      return res.status(400).send({ status: false, message: "Email is required." });
+    }
+
+    const existingCustomer = await Customer.findOne({ email });
+
+    if (!existingCustomer) {
+      return res.status(404).send({ status: false, message: "Email not found." });
+    }
+
+    // Generate a new OTP
+    const NewOtp = generateOTP();
+
+    let mailOptions = {
+      from: "smartmart@gmail.com",
+      to: email,
+      subject: "Smart Mart - Resend OTP",
+      text: `Your new OTP for Smart Mart verification is: ${NewOtp}.\n\nIt is valid for 10 minutes.`,
+      html: `
+        <p>Your new OTP for Smart Mart verification is:</p>
+        <h1 style="color: blue; text-align: center;">${NewOtp}</h1>
+        <p>This OTP is valid for <strong>10 minutes</strong>.</p>
+        <br>
+        <p>Thank you,</p>
+        <p><strong>Smart Mart Team</strong></p>
+      `,
+    };
+
+    // Remove the previous OTP and store the new one
+    otpGeneratorList[email] = NewOtp;
+
+    // Auto-remove OTP after 10 minutes
+    setTimeout(() => {
+      delete otpGeneratorList[email];
+      console.log(`OTP for ${email} has expired.`);
+    }, expiryTime);
+
+    transporter.sendMail(mailOptions, (err, result) => {
+      if (err) {
+        console.log("Failed to resend OTP...",err);
+        return res.status(500).send({ status: false, message: "Failed to resend OTP" });
+      } else {
+        console.log("Resent OTP successfully...");
+        res.status(200).send({ status: true, message: "OTP resent successfully" });
+      }
+    });
+
+  } catch (error) {
+    console.error("Error in resendOtp:", error);
+    res.status(500).send({ status: false, message: "Server error" });
+  }
+};

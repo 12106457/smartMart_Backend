@@ -9,58 +9,147 @@ const SellerOrder=require("../models/seller_order_models/order.js");
 const OrderItem=require("../models/seller_order_models/orderItem.js");
 
 // Add a New Shop
+// exports.addShop = async (req, res) => {
+//     try {
+//         const { name, location } = req.body;
+//         const { ownerId } = req.params; 
+
+//         // Validate input
+//         if (!name || !location) {
+//             return res.status(400).send({
+//                 status: false,
+//                 message: "Shop name and location are required."
+//             });
+//         }
+
+//          // Find the shop owner's profile
+//          const ownerProfileDetails = await shopOwnerModel.findOne({ _id: ownerId });
+
+//          if (!ownerProfileDetails) {
+//              return res.status(404).send({
+//                  status: false,
+//                  message: "Shop owner Profile not found.Please register first"
+//              });
+//          }
+
+//         // Check if a shop with the same name and location already exists
+//         const existingShop = await Shop.findOne({ name, location });
+//         if (existingShop) {
+//             return res.status(400).send({
+//                 status: false,
+//                 message: "A shop with this name already exists at this location."
+//             });
+//         }
+
+        
+
+//         // Generate a unique shop ID
+//         const generatedShopId = await generateUniqueShopId();
+
+//         // Create a new shop
+//         const newShop = await Shop.create({
+//             shopId: generatedShopId,
+//             ...req.body
+//         });
+
+       
+
+//         // Update the shopId in the owner's profile
+//         ownerProfileDetails.shopId = newShop._id; // ✅ Correctly assigning `shopId`
+//         await ownerProfileDetails.save(); // ✅ Ensuring update is saved
+
+//         res.status(201).send({
+//             status: true,
+//             message: "Shop Register added successfully",
+//             data: newShop
+//         });
+
+//     } catch (error) {
+//         console.error("Error in addShop:", error);
+        
+//         if (error.name === "ValidationError") {
+//             // Extract validation error messages
+//             const errors = Object.values(error.errors).map(err => err.message);
+//             return res.status(400).send({ status: false, error: "Validation Error", message: errors });
+//         }
+
+//         res.status(500).send({ error: "Something went wrong" });
+//     }
+// };
+
+
 exports.addShop = async (req, res) => {
     try {
-        const { name, location } = req.body;
-        const { ownerId } = req.params; 
+        const { name, shopAddress, latitude, longitude, shopCategory, openingHours, shopImage } = req.body;
+        const { ownerId } = req.params; // Extract ownerId from params
 
-        // Validate input
-        if (!name || !location) {
+        // ✅ Validate required fields
+        if (!name || !shopAddress || !latitude || !longitude || !openingHours) {
             return res.status(400).send({
                 status: false,
-                message: "Shop name and location are required."
+                message: "Shop name, address, location (latitude, longitude), and opening hours are required."
             });
         }
 
-         // Find the shop owner's profile
-         const ownerProfileDetails = await shopOwnerModel.findOne({ _id: ownerId });
+        // ✅ Ensure latitude & longitude are valid numbers
+        const lat = parseFloat(latitude);
+        const lng = parseFloat(longitude);
+        if (isNaN(lat) || isNaN(lng)) {
+            return res.status(400).send({
+                status: false,
+                message: "Latitude and Longitude must be valid numbers."
+            });
+        }
 
-         if (!ownerProfileDetails) {
-             return res.status(404).send({
-                 status: false,
-                 message: "Shop owner Profile not found.Please register first"
-             });
-         }
+        // ✅ Check if the shop owner exists
+        const ownerProfileDetails = await shopOwnerModel.findById(ownerId);
+        if (!ownerProfileDetails) {
+            return res.status(404).send({
+                status: false,
+                message: "Shop owner profile not found. Please register first."
+            });
+        }
 
-        // Check if a shop with the same name and location already exists
-        const existingShop = await Shop.findOne({ name, location });
-        if (existingShop) {
+        // ✅ Check if a shop with the same name and location already exists
+        const shopExists = await Shop.exists({
+            name,
+            "location.coordinates": [lng, lat] // [longitude, latitude]
+        });
+
+        if (shopExists) {
             return res.status(400).send({
                 status: false,
                 message: "A shop with this name already exists at this location."
             });
         }
 
-        
-
-        // Generate a unique shop ID
+        // ✅ Generate a unique shop ID
         const generatedShopId = await generateUniqueShopId();
 
-        // Create a new shop
-        const newShop = await Shop.create({
+        // ✅ Create a new shop with proper GeoJSON location format
+        const newShop = new Shop({
             shopId: generatedShopId,
-            ...req.body
+            name,
+            shopAddress,
+            location: {
+                type: "Point",
+                coordinates: [lng, lat] // [longitude, latitude]
+            },
+            shopCategory: shopCategory.map(id => new mongoose.Types.ObjectId(id)), // Ensure ObjectIds
+            openingHours,
+            shopImage
         });
 
-       
+        // ✅ Save the new shop
+        await newShop.save();
 
-        // Update the shopId in the owner's profile
-        ownerProfileDetails.shopId = newShop._id; // ✅ Correctly assigning `shopId`
-        await ownerProfileDetails.save(); // ✅ Ensuring update is saved
+        // ✅ Update the shopId in the owner's profile
+        ownerProfileDetails.shopId = newShop._id;
+        await ownerProfileDetails.save();
 
         res.status(201).send({
             status: true,
-            message: "Shop Register added successfully",
+            message: "Shop registered successfully",
             data: newShop
         });
 
@@ -73,7 +162,7 @@ exports.addShop = async (req, res) => {
             return res.status(400).send({ status: false, error: "Validation Error", message: errors });
         }
 
-        res.status(500).send({ error: "Something went wrong" });
+        res.status(500).send({ status: false, error: "Something went wrong" });
     }
 };
 
