@@ -1,9 +1,9 @@
 const mongoose = require("mongoose");
-const Shop = require("../../models/shopModel"); 
+const Shop = require("../../models/shopModel");
+const ShopProduct = require("../../models/shopProdctModel");
 
 exports.findNearbyShops = async (req, res) => {
     try {
-        // const { latitude, longitude, radius } = req.body; // Accept radius in KM
         let { latitude, longitude, radius } = req.query;
 
         if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
@@ -12,24 +12,50 @@ exports.findNearbyShops = async (req, res) => {
 
         const userLocation = {
             type: "Point",
-            coordinates: [parseFloat(longitude), parseFloat(latitude)] // [lng, lat]
+            coordinates: [parseFloat(longitude), parseFloat(latitude)]
         };
 
-        const maxDistance = (isNaN(radius) ? 5 : parseFloat(radius)) * 1000; // Convert KM to meters, default 5km
-
-        // await mongoose.connection.db.collection("shops").dropIndex("location_1").catch(err => console.log(err.message));
-
-        // console.log(await Shop.listIndexes());
-
+        const maxDistance = (isNaN(radius) ? 5 : parseFloat(radius)) * 1000;
 
         const nearbyShops = await Shop.aggregate([
-        
             {
                 $geoNear: {
                     near: userLocation,
-                    distanceField: "distance", // Will return the distance in meters
-                    maxDistance: maxDistance, // Limit to given radius
+                    distanceField: "distance",
+                    maxDistance: maxDistance,
                     spherical: true
+                }
+            },
+            {
+                $lookup: {
+                    from: "shopproducts",
+                    let: { shopId: "$_id" },
+                    pipeline: [
+                        { $match: { $expr: { $eq: ["$shopId", "$$shopId"] } } },
+                        { $sample: { size: 10 } }, // Fetch 10 random products
+                        {
+                            $lookup: {
+                                from: "productimages",
+                                localField: "prodId",
+                                foreignField: "_id",
+                                as: "productDetails"
+                            }
+                        },
+                        { $unwind: { path: "$productDetails", preserveNullAndEmptyArrays: true } },
+                        {
+                            $project: {
+                                _id: 1,
+                                name: 1,
+                                category: 1,
+                                description: 1,
+                                price: 1,
+                                stock: 1,
+                                available: 1,
+                                productImage: "$productDetails.image" 
+                            }
+                        }
+                    ],
+                    as: "products"
                 }
             },
             {
@@ -39,23 +65,17 @@ exports.findNearbyShops = async (req, res) => {
                     shopAddress: 1,
                     shopImage: 1,
                     rating: 1,
-                    distance: { $round: [{ $divide: ["$distance", 1000] }, 2] } // Convert meters to KM (2 decimal places)
+                    distance: { $round: [{ $divide: ["$distance", 1000] }, 2] },
+                    products: 1
                 }
             }
         ]);
 
-        if (nearbyShops.length > 0) {
-            return res.status(200).json({
-                status: true,
-                message: `Fetched shops within ${radius ? radius : "5"} km radius`,
-                shops: nearbyShops
-            });
-        } else {
-            return res.status(200).json({
-                status: true,
-                message: `No shops found within ${radius ? radius : "5"} km radius`
-            });
-        }
+        return res.status(200).json({
+            status: true,
+            message: `Fetched shops within ${radius || "5"} km radius`,
+            shops: nearbyShops
+        });
 
     } catch (error) {
         console.error("Error fetching nearby shops:", error);
