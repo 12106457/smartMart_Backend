@@ -6,6 +6,7 @@ const OrderItem = require("../models/seller_order_models/orderItem");
 const Transaction = require("../models/seller_order_models/transactions");
 const OrderStatusHistory = require("../models/seller_order_models/orderStatusHistory");
 const generateOrderId = require("../utility/orderIdGenerator");
+const CustomerCartModel=require("../models/customer/cartModel");
 
 exports.createOrder = async (req, res) => {
   const session = await mongoose.startSession();
@@ -23,7 +24,7 @@ exports.createOrder = async (req, res) => {
       totalAmount: product.totalAmount,
     }));
 
-    const savedOrderItems = await OrderItem.insertMany(orderItems, { session });
+    const savedOrderItems = await OrderItem.insertMany(products, { session });
 
     // ✅ Step 2: Create Seller Order
     const sellerOrder = new SellerOrder({
@@ -77,6 +78,13 @@ exports.createOrder = async (req, res) => {
       await transaction.save({ session });
     }
 
+    await CustomerCartModel.updateOne(
+      { customerId },
+      { $set: { items: [] } },
+      { session }
+    );
+    const updatedCart = await CustomerCartModel.findOne({ customerId }).session(session);
+    console.log("Updated Cart:", updatedCart);
     await session.commitTransaction(); // Commit Transaction
     session.endSession();
 

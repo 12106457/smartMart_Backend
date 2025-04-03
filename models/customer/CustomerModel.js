@@ -14,7 +14,7 @@ const customerSchema = new mongoose.Schema({
   },
   locationCoordinates: { type: [Number], index: "2dsphere" } ,
   walletBalance: { type: Number, default: 0, min: 0 },
-  cart: [{ type: mongoose.Schema.Types.ObjectId, ref: "Cart",default:[] }],
+  cart: { type: mongoose.Schema.Types.ObjectId, ref: "Cart" },
   orders: [{ type: mongoose.Schema.Types.ObjectId, ref: "Customer_Order_Table",default:[] }],
   referralCode: { type: String, sparse: true, default: null },
   isActive: { type: Boolean, default: true},

@@ -4,6 +4,7 @@ const nodemailer = require("nodemailer");
 const axios = require("axios");
 const TokenGenerator=require("../utility/jsonWebTokenGenerater");
 require("dotenv").config();
+const CartModel=require("../models/customer/cartModel")
 const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
@@ -18,7 +19,7 @@ exports.createCustomer = async (req, res) => {
 
     // ✅ Validate required fields
     if (!name || !email || !phone) {
-      return res.status(400).send({status:false,message:"Missing" });
+      return res.status(400).send({ status: false, message: "Missing required fields" });
     }
 
     // ✅ Check if email or phone already exists
@@ -27,20 +28,33 @@ exports.createCustomer = async (req, res) => {
     });
 
     if (existingCustomer) {
-      return res.status(409).send({status:false, message: "Exist" });
+      return res.status(409).send({ status: false, message: "Customer already exists" });
     }
 
     // ✅ Create new customer
     const newCustomer = new Customer({ name, email, phone });
     const savedCustomer = await newCustomer.save();
 
-    res.status(201).json({ status:true,message: "Customer created successfully", data: savedCustomer });
+    // ✅ Create a cart for the new customer
+    const newCart = new CartModel({ customerId: savedCustomer._id, items: [] });
+    const savedCart = await newCart.save();
+
+    // ✅ Update the customer with the cart ID
+    savedCustomer.cart = savedCart._id;
+    await savedCustomer.save();
+
+    res.status(201).json({
+      status: true,
+      message: "Customer and cart created successfully",
+      data: savedCustomer
+    });
+
   } catch (error) {
     console.error("Error creating customer:", error);
 
     // ✅ Handle duplicate key error (MongoDB E11000 error)
     if (error.code === 11000) {
-      return res.status(409).json({ status:false,message: "Exist" });
+      return res.status(409).json({ status: false, message: "Customer already exists" });
     }
 
     res.status(500).json({ message: "Server error", error: error.message });
