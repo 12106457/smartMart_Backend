@@ -89,7 +89,7 @@ exports.updateCart = async (req, res) => {
                 select: "prodId name category description price",
                 populate: {
                     path: "prodId",
-                    select: "name category description price"
+                    select: "name image"
                 }
             });
 
