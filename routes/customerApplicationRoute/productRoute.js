@@ -1,9 +1,12 @@
 const express = require("express");
-const {sendParticularProductDetails,updateCart,sendCartDetails,getCustomerOrderList}=require("../../controllers/customerApplicationController/productController")
+const {sendParticularProductDetails,ViewAllProducts,updateCart,sendCartDetails,getCustomerOrderList}=require("../../controllers/customerApplicationController/productController")
 const router = express.Router();
 
 //send product details based on id
 router.get("/getproduct",sendParticularProductDetails);
+
+//send all shops products based on shop id in params
+router.get("/view-all-products",ViewAllProducts);
 
 //responsible for update,delete and add new product to cart 
 router.post("/cart",updateCart);

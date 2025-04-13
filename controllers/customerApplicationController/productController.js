@@ -12,7 +12,7 @@ exports.sendParticularProductDetails = async (req, res) => {
         }
 
         // Fetch product details and populate shop details
-        const productData = await productModel.findById(id).populate("prodId");
+        const productData = await productModel.findById(id).populate("prodId").populate("category");
 
         if (!productData) {
             return res.status(404).json({ status: false, message: "No product found" });
@@ -29,6 +29,32 @@ exports.sendParticularProductDetails = async (req, res) => {
         return res.status(500).json({ status: false, message: "Internal server error" });
     }
 };
+
+//to send all product of particular selected shop
+exports.ViewAllProducts=async(req,res)=>{
+    try{
+        const {id}=req.params;
+        if(!id){
+            res.status(404).send({status:false,message:"shop id not sended in params."});
+        }
+
+        const ShopProducts = await productModel
+        .find({ shopId: id })
+        .populate({
+            path:"category",
+        })
+        .populate({
+            path: "prodId",
+            select: "_id name image"
+        })
+        .select("shopId prodId name category description price stock available");
+
+        res.status(200).send({status:true,message:"fetch the shop products",data:ShopProducts});
+    }catch(e){
+        console.log("server at viewAllProduct controller:",e);
+        return res.status(500).send({status:false,message:"Internal server error",error:e});
+    }
+}
 
 exports.updateCart = async (req, res) => {
     try {
@@ -86,7 +112,10 @@ exports.updateCart = async (req, res) => {
         const updatedCart = await cartModel.findOne({ customerId })
             .populate({
                 path: "items.productId",
-                select: "prodId name category description price",
+                select: "prodId shopId name category description price available stock",
+                populate:{
+                    path:"category"
+                },
                 populate: {
                     path: "prodId",
                     select: "name image"
@@ -118,6 +147,7 @@ exports.sendCartDetails = async (req, res) => {
         .findOne({ customerId: id })
         .populate({
             path: "items.productId",
+            select: "prodId shopId name category description price",
             populate: {
                 path: "prodId", 
                 select:"image name"

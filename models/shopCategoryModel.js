@@ -14,6 +14,10 @@ const ShopCategorySchema = new mongoose.Schema({
         type:String,
         default:""
     },
+    image:{
+        type:String,
+        default:null
+    },
     active:{
         type:Boolean,
         default:true

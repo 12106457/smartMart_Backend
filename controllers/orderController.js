@@ -37,7 +37,7 @@ exports.createOrder = async (req, res) => {
       shippingAddress,
       status: "Pending",
       orderType,
-      paymentStatus: paymentMethod === "cash_on_delivery" ? "Pending" : paymentStatus,
+      paymentStatus: paymentMethod === "Cash_On_Delivery" ? "Pending" : paymentStatus,
       deliveryStatus: "Pending",
       additionalNotes
     });
@@ -55,7 +55,7 @@ exports.createOrder = async (req, res) => {
       shippingAddress,
       orderType,
       status: "Pending",
-      paymentStatus: paymentMethod === "cash_on_delivery" ? "Pending" : paymentStatus,
+      paymentStatus: paymentMethod === "Cash_On_Delivery" ? "Pending" : paymentStatus,
     });
 
     await customerOrder.save({ session });
@@ -65,7 +65,7 @@ exports.createOrder = async (req, res) => {
 
     // ✅ Step 5: Create Transaction (If Payment Method is Not COD)
     let transaction = null;
-    if (paymentMethod !== "cash_on_delivery") {
+    if (paymentMethod !== "Cash_On_Delivery") {
       transaction = new Transaction({
         orderNo:OrderId,
         shopId:sellerId,
