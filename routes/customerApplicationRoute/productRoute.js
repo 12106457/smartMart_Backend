@@ -6,7 +6,7 @@ const router = express.Router();
 router.get("/getproduct",sendParticularProductDetails);
 
 //send all shops products based on shop id in params
-router.get("/view-all-products",ViewAllProducts);
+router.get("/view-all-products/:id",ViewAllProducts);
 
 //responsible for update,delete and add new product to cart 
 router.post("/cart",updateCart);
