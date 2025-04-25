@@ -111,7 +111,7 @@ exports.createOrder = async (req, res) => {
 
 
 // ✅ GET ALL ORDERS (With Order History & Transactions)
-exports.getOrders = async (req, res) => {
+exports.getSellerOrders = async (req, res) => {
   try {
     const { sellerId } = req.params; 
     
@@ -190,3 +190,40 @@ exports.processPayment = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+// --------------------------customer order controllers------------------------------
+
+exports.sendCustomerOrder=async (req,res)=>{
+  try {
+    const { customerId } = req.params; 
+    
+    const orders = await CustomerOrder.find({ customerId })
+      .select("-__v -createdAt -updatedAt")
+      .populate("shopId","_id name shopAddress phone location shopImage image openingHours rating shopCategory") 
+      .populate({
+        path: "items", 
+        populate: {
+          path: "productId",
+          select:"_id name category description price", 
+          populate: {
+            path: "prodId", 
+            select:"image"
+          },
+        },
+        select:"_id quantity totalAmount"
+      })
+      .lean()
+      .sort({ orderDate: -1 });
+
+    
+    // Respond with the populated orders
+    res.status(200).send({
+      status:true,
+      message:"fetch the seller orders",
+      data: orders
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
