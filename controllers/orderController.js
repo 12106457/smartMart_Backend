@@ -214,13 +214,13 @@ exports.sendCustomerOrder=async (req,res)=>{
         select:"_id quantity totalAmount"
       })
       .lean()
-      .sort({ orderDate: -1 });
+      .sort({ createdAt: -1 });
 
     
     // Respond with the populated orders
     res.status(200).send({
       status:true,
-      message:"fetch the seller orders",
+      message:"fetch the customer orders",
       data: orders
     });
   } catch (error) {
