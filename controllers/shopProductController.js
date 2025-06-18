@@ -80,7 +80,7 @@ const OrderItem=require("../models/seller_order_models/orderItem.js");
 
 exports.addShop = async (req, res) => {
     try {
-        const { name, shopAddress, latitude, longitude, shopCategory, openingHours, shopImage } = req.body;
+        const { name, shopAddress, latitude, longitude, shopCategory,subCategorys, openingHours, shopImage } = req.body;
         const { ownerId } = req.params; // Extract ownerId from params
 
         // ✅ Validate required fields
@@ -135,7 +135,8 @@ exports.addShop = async (req, res) => {
                 type: "Point",
                 coordinates: [lng, lat] // [longitude, latitude]
             },
-            shopCategory: shopCategory.map(id => new mongoose.Types.ObjectId(id)), // Ensure ObjectIds
+            shopCategory: shopCategory, 
+            subCategorys:subCategorys.map(id => new mongoose.Types.ObjectId(id)),
             openingHours,
             shopImage
         });

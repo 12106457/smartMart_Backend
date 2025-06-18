@@ -8,7 +8,8 @@ const ShopSchema = new mongoose.Schema({
         type: { type: String, enum: ["Point"], required: true },
         coordinates: { type: [Number], required: true } // [longitude, latitude]
     },
-    shopCategory: [{ type: mongoose.Schema.Types.ObjectId, ref: "shopCategorys", required: true }],
+    shopCategory: { type: mongoose.Schema.Types.ObjectId, ref: "shopCategorys", required: true },
+    subCategorys:[{ type: mongoose.Schema.Types.ObjectId, ref: "subCategorys", required: true }],
     shopImage: { type: String },
     openingHours: { type: String, required: true },
     rating: { type: Number, default: 5 },
