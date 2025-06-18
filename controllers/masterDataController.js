@@ -92,7 +92,7 @@ exports.getSubcategoryParticularShop = async (req, res) => {
     }
 
     const shopData = await shopModel
-      .findOne({ shopId }) // Use findOne with object
+      .findOne({ _id:shopId }) // Use findOne with object
       .populate("subCategorys");
 
     if (!shopData) {
