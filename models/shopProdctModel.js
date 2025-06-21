@@ -7,6 +7,7 @@ const ShopProductSchema = new mongoose.Schema({
   category: { type: mongoose.Schema.Types.ObjectId, ref: 'subCategorys', required: true },
   description: { type: String, required: true },
   price: { type: Number, required: true },
+  originalPrice:{type:Number,default:0},
   stock: { type: Number, required: true },
   available: { type: Boolean, default: true }
 });

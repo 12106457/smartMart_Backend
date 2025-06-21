@@ -299,7 +299,7 @@ exports.getShopProducts = async (req, res) => {
 
 exports.updateShopProducts = async (req, res) => {
     try {
-        const { id, price, stock, available, image, category, description, name } = req.body;
+        const { id, price, stock, available, image, category, description, name,originalPrice } = req.body;
 
         const updateFields = {};
         if (name !== undefined) updateFields.name = name;
@@ -308,6 +308,8 @@ exports.updateShopProducts = async (req, res) => {
         if (available !== undefined) updateFields.available = available;
         if (description !== undefined) updateFields.description = description;
         if (category !== undefined) updateFields.category = category;
+        if (category !== undefined) updateFields.originalPrice = originalPrice;
+        
 
         const updatedShopProduct = await ShopProduct.findOneAndUpdate(
             { _id: id },
