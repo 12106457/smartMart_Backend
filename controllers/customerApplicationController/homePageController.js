@@ -61,6 +61,7 @@ exports.findNearbyShops = async (req, res) => {
                       category: 1,
                       description: 1,
                       price: 1,
+                      originalPrice:1,
                       stock: 1,
                       available: 1
                     }
