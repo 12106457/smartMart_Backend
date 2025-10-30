@@ -13,6 +13,8 @@ const CustomerHomePageRoute=require("./routes/customerApplicationRoute/homeRoute
 const CustomerProductRoute=require("./routes/customerApplicationRoute/productRoute")
 const cors = require("cors");
 const axios = require("axios");
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpec = require("./swagger/swagger");
 dotenv.config();
 connectDB();
 
@@ -25,7 +27,7 @@ app.use(
       credentials: true,
     })
   );
-
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/shop", shopRoutes);
 app.use("/master", masterRoute);
 app.use("/auth", authRoute);
